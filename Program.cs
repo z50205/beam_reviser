@@ -9,8 +9,14 @@ namespace HelloWorld
     {
         static void Main(string[] args)
         {
-            string read_path = @"d:\temp\GB_T.GBN";
-            string write_path = @"d:\temp\GB_T_M.GBN";
+            string read_path1 =System.AppDomain.CurrentDomain.BaseDirectory;
+            string read_path = @"\GB_T.GBN";
+            string write_path = @"\GB_T_M.GBN";
+            while (!File.Exists(read_path1 + read_path))
+            {
+                Console.WriteLine("File can't find,please enter your GBN file path.");
+                read_path1 = Console.ReadLine();
+            }
             int pivot = 12;
             // if (!File.Exists(path))
             // {
@@ -22,8 +28,14 @@ namespace HelloWorld
             //         sw.WriteLine("Welcome");
             //     }
             // }
-            StreamReader sr = new StreamReader(read_path);
-            StreamWriter sw = new StreamWriter(write_path);
+            StreamReader sr = new StreamReader(read_path1 + read_path);
+            StreamWriter sw = new StreamWriter(read_path1 + write_path);
+            char mode_pivot = '4';
+            while (!(mode_pivot == '1' || mode_pivot == '2' || mode_pivot == '3'))
+            {
+                Console.WriteLine("1:僅更改第三列鋼筋；2:僅更改自由端圖示；3:一同更改");
+                mode_pivot = Console.ReadKey(true).KeyChar;
+            }
             string temp_s = "";
             string[] s = new string[12];
             string[] s_new;
@@ -42,7 +54,7 @@ namespace HelloWorld
                     //建立資料階段
 
                     //修改階段
-                    s_new = revise_beam(s);
+                    s_new = revise_beam(s, mode_pivot);
                     for (int i = 0; i < pivot; i++)
                     {
                         sw.WriteLine(s_new[i]);
@@ -65,13 +77,24 @@ namespace HelloWorld
             }
             sw.Close();
         }
-        public static string[] revise_beam(string[] s)
+        public static string[] revise_beam(string[] s, char mode_pivot)
         {
-            string[] s_new;
+            string[] s_new=new string[12];
             double breadth = Convert.ToDouble(s[2].Substring(11, 5).Replace(" ", ""));
             double depth = Convert.ToDouble(s[2].Substring(16, 5).Replace(" ", ""));
-            s_new = change_third_row(s, breadth, depth);
-            s_new =change_cantilever(s_new);
+            if (mode_pivot == '1')
+            {
+                s_new = change_third_row(s, breadth, depth);
+            }
+            if (mode_pivot == '2')
+            {
+                s_new = change_cantilever(s);
+            }
+            if (mode_pivot == '3')
+            {
+                s_new = change_third_row(s, breadth, depth);
+                s_new = change_cantilever(s_new);
+            }
             return s_new;
         }
         public static string[] change_third_row(string[] s, double B, double D)
@@ -91,6 +114,7 @@ namespace HelloWorld
             {
                 if (Int32.Parse(s[i].Substring(20, 2).Replace(" ", "")) != 0)
                 {
+                    Console.WriteLine(s[0].Substring(0, 18) + "\n原鋼筋排列" + s[i].Substring(0, 2) + " " + s[i].Substring(10, 2) + " " + s[i].Substring(20, 2) + " ");
                     //全部鋼筋根數
                     total_bar = Int32.Parse(s[i].Substring(0, 2).Replace(" ", "")) + Int32.Parse(s[i].Substring(10, 2).Replace(" ", "")) + Int32.Parse(s[i].Substring(20, 2).Replace(" ", ""));
                     //可放最大鋼筋根數
@@ -99,7 +123,6 @@ namespace HelloWorld
                     bar_new = change_bar(total_bar, max_bar);
                     //輸出並替代該端鋼筋
                     s_new[i] = bar_new[0] + s[i].Substring(2, 8) + bar_new[1] + s[i].Substring(12, 8) + bar_new[2] + s[i].Substring(22, 58);
-                    Console.WriteLine( s[0].Substring(0, 17) + "\n原鋼筋排列" + s[i].Substring(0, 2) + " " + s[i].Substring(10, 2) + " " + s[i].Substring(20, 2) + " ");
                     Console.WriteLine("總鋼筋根數" + total_bar + "\n" + "調整後鋼筋排列" + bar_new[0] + " " + bar_new[1] + " " + bar_new[2]);
                     //s_new[i]=bar_new[0]+s[i].Substring(2, 9)+bar_new[1]+s[i].Substring(12, 19)+bar_new[2]+s[i].Substring(22, 80);
                 }
@@ -152,6 +175,16 @@ namespace HelloWorld
                 bar[1] = residual_bar;
             residual_bar -= bar[1];
             bar[2] = residual_bar;
+            if (bar[2] != 0)
+            {
+                Console.WriteLine("!!!!!Can't change all rebars to 1st and 2nd row.Key any key to continue.");
+                Console.ReadKey(true);
+            }
+            else
+            {
+                bar[0] = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(bar[0] + bar[1]) / 2));
+                bar[1] = total_bar - bar[0];
+            }
             for (int i = 0; i <= 2; i++)
                 bar_str[i] = bar[i].ToString().PadLeft(2, ' ');
             return bar_str;
@@ -164,18 +197,24 @@ namespace HelloWorld
             {
                 char keyin = '7';
                 //while防呆輸入，設定初始值必進入迴圈
-                while (!(keyin == '1'||keyin == '2'||keyin == '3'))
+                while (!(keyin == '1' || keyin == '2' || keyin == '3'))
                 {
-                    Console.WriteLine(s[0].Substring(0,17)+"\n本梁前綴為懸臂梁，修改左端：1；修改右端：2；不修改：3\n");
+                    Console.WriteLine(s[0].Substring(0, 18) + "\n本梁號前綴c為懸臂梁；修改左端：1；修改右端：2；不修改：3");
                     keyin = Console.ReadKey(true).KeyChar;
                 }
-                if(keyin=='1')
+                if (keyin == '1')
                 {
-                    s[2]=s[2].Substring(0,37)+"15. - 0"+s[2].Substring(44,36);
+                    s[2] = s[2].Substring(0, 37) + "20. - 0" + s[2].Substring(44, 36);
+                    Console.WriteLine("1:修改左端");
                 }
-                if(keyin=='2')
+                if (keyin == '2')
                 {
-                    s[3]=s[3].Substring(0,37)+"15. - 0"+s[3].Substring(44,36);
+                    s[3] = s[3].Substring(0, 37) + "20. - 0" + s[3].Substring(44, 36);
+                    Console.WriteLine("2:修改右端");
+                }
+                if (keyin == '3')
+                {
+                    Console.WriteLine("3:不修改");
                 }
             }
             return s;
