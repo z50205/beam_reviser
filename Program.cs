@@ -9,7 +9,7 @@ namespace HelloWorld
     {
         static void Main(string[] args)
         {
-            string read_path1 =Directory.GetCurrentDirectory();
+            string read_path1 = Directory.GetCurrentDirectory();
             string read_path = @"\GB_T.GBN";
             string write_path = @"\GB_T.GBN";
             while (!File.Exists(read_path1 + read_path))
@@ -30,13 +30,13 @@ namespace HelloWorld
             // }
             Directory.CreateDirectory(read_path1 + @"\GB_T_M");
             StreamReader sr = new StreamReader(read_path1 + read_path);
-            StreamWriter sw = new StreamWriter(read_path1 + @"\GB_T_M"+write_path);
-            if(File.Exists(read_path1 + @"\DRAW-SET.BAT"))
-            System.IO.File.Copy(read_path1 + @"\DRAW-SET.BAT", read_path1 + @"\GB_T_M\DRAW-SET.BAT", true);
+            StreamWriter sw = new StreamWriter(read_path1 + @"\GB_T_M" + write_path);
+            if (File.Exists(read_path1 + @"\DRAW-SET.BAT"))
+                System.IO.File.Copy(read_path1 + @"\DRAW-SET.BAT", read_path1 + @"\GB_T_M\DRAW-SET.BAT", true);
             char mode_pivot = '4';
             while (!(mode_pivot == '1' || mode_pivot == '2' || mode_pivot == '3'))
             {
-                Console.WriteLine("1:僅更改第三列鋼筋；2:僅更改自由端圖示；3:一同更改");
+                Console.WriteLine("1:僅更改第三列鋼筋；2:僅更改自由端圖示；3:修改第三列鋼筋、調整中間箍筋、端部雙箍調整為至少4根主筋");
                 mode_pivot = Console.ReadKey(true).KeyChar;
             }
             string temp_s = "";
@@ -82,9 +82,11 @@ namespace HelloWorld
         }
         public static string[] revise_beam(string[] s, char mode_pivot)
         {
-            string[] s_new=new string[12];
+            string[] s_new = new string[12];
             double breadth = Convert.ToDouble(s[2].Substring(11, 5).Replace(" ", ""));
             double depth = Convert.ToDouble(s[2].Substring(16, 5).Replace(" ", ""));
+            if(s[0].Substring(0, 5).Equals("BEAM "))
+            {
             if (mode_pivot == '1')
             {
                 s_new = change_third_row(s, breadth, depth);
@@ -96,8 +98,73 @@ namespace HelloWorld
             if (mode_pivot == '3')
             {
                 s_new = change_third_row(s, breadth, depth);
+                s_new = change_middle_stirrups(s_new, breadth, depth);
+                s_new = change_four_bar(s_new, breadth, depth);
+            }
+            if (mode_pivot == '9')
+            {
+                s_new = change_third_row(s, breadth, depth);
                 s_new = change_cantilever(s_new);
             }
+            }
+            else
+            s_new =s;
+            return s_new;
+        }
+        public static string[] change_four_bar(string[] s, double B, double D)
+        {
+            string[] s_new = new string[12];
+            s_new = s;
+            if (B >= 65)
+            {
+                if (s[10].Substring(1, 1) == "2")
+                {
+                    for (int i = 4; i <= 5; i++)
+                    {
+                        if (s[i].Substring(1, 1) == "3" && s[i].Substring(11, 1) == "0" && Int32.Parse(s[2].Substring(35, 4)) > 0)
+                        {
+                            s_new[i] = " 4" + s[i].Substring(2, 78);
+                            if (i == 4)
+                                Console.WriteLine(s[0].Substring(0, 24) + "左上改4#" + s[i].Substring(3, 2));
+                            else
+                                Console.WriteLine(s[0].Substring(0, 24) + "左下改4#" + s[i].Substring(3, 2));
+                        }
+                    }
+                }
+                if (s[10].Substring(21, 1) == "2")
+                {
+                    for (int i = 8; i <= 9; i++)
+                    {
+                        if (s[i].Substring(1, 1) == "3" && s[i].Substring(11, 1) == "0" && Int32.Parse(s[3].Substring(35, 4)) > 0)
+                        {
+                            s_new[i] = " 4" + s[i].Substring(2, 78);
+                            if (i == 8)
+                                Console.WriteLine(s[0].Substring(0, 24) + "右上改4#" + s[i].Substring(3, 2));
+                            else
+                                Console.WriteLine(s[0].Substring(0, 24) + "右下改4#" + s[i].Substring(3, 2));
+                        }
+                    }
+                }
+            }
+            // Console.WriteLine(s.Substring(20, 2).Replace(" ", ""));
+            return s_new;
+        }
+        public static string[] change_middle_stirrups(string[] s, double B, double D)
+        {
+            string[] s_new = new string[12];
+            s_new = s;
+            int number = Int32.Parse(s[10].Substring(11, 1));
+            int distance = Int32.Parse(s[10].Substring(16, 2));
+            if (distance / 2 >= 10 && number == 2)
+            {
+                Console.WriteLine(s[0].Substring(0, 24));
+                Console.WriteLine("中間原箍筋為：" + s[10].Substring(11, 9));
+                distance = distance / 2;
+                number = number - 1;
+                s_new[10] = s[10].Substring(0, 11) + number + s[10].Substring(12, 4) + distance + s[10].Substring(18, 52);
+                Console.WriteLine("調整中間箍筋為：" + s_new[10].Substring(11, 9));
+            }
+            //Console.WriteLine(total_bar);
             return s_new;
         }
         public static string[] change_third_row(string[] s, double B, double D)
@@ -118,7 +185,7 @@ namespace HelloWorld
             {
                 if (Int32.Parse(s[i].Substring(20, 2).Replace(" ", "")) != 0)
                 {
-                    Console.WriteLine(s[0].Substring(0, 18) + "\n原鋼筋排列" + s[i].Substring(0, 2) + " " + s[i].Substring(10, 2) + " " + s[i].Substring(20, 2) + " ");
+                    Console.WriteLine(s[0].Substring(0, 24) + "\n原鋼筋排列" + s[i].Substring(0, 2) + " " + s[i].Substring(10, 2) + " " + s[i].Substring(20, 2) + " ");
                     //全部鋼筋根數
                     total_bar = Int32.Parse(s[i].Substring(0, 2).Replace(" ", "")) + Int32.Parse(s[i].Substring(10, 2).Replace(" ", "")) + Int32.Parse(s[i].Substring(20, 2).Replace(" ", ""));
                     //可放最大鋼筋根數
@@ -205,17 +272,17 @@ namespace HelloWorld
                 //while防呆輸入，設定初始值必進入迴圈
                 while (!(keyin == '1' || keyin == '2' || keyin == '3'))
                 {
-                    Console.WriteLine(s[0].Substring(0, 18) + "\n本梁號前綴c為懸臂梁；修改左端：1；修改右端：2；不修改：3");
+                    Console.WriteLine(s[0].Substring(0, 24) + "\n本梁號前綴c為懸臂梁；修改左端：1；修改右端：2；不修改：3");
                     keyin = Console.ReadKey(true).KeyChar;
                 }
                 if (keyin == '1')
                 {
-                    s[2] = s[2].Substring(0, 37) + "20. - 0" + s[2].Substring(44, 36);
+                    s[2] = s[2].Substring(0, 35) + " -15. - 0" + s[2].Substring(44, 36);
                     Console.WriteLine("1:修改左端");
                 }
                 if (keyin == '2')
                 {
-                    s[3] = s[3].Substring(0, 37) + "20. - 0" + s[3].Substring(44, 36);
+                    s[3] = s[3].Substring(0, 35) + " -15. - 0" + s[3].Substring(44, 36);
                     Console.WriteLine("2:修改右端");
                 }
                 if (keyin == '3')
@@ -225,6 +292,7 @@ namespace HelloWorld
             }
             return s;
         }
+
     }
 
     // class beam
